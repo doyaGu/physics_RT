@@ -426,6 +426,10 @@ add_library(physics_RT SHARED
         physics_RT.cpp
         CKIpionManager.cpp
         CKIpionManager.h
+        PhysicsCallback.cpp
+        PhysicsCallback.h
+        PhysicsContact.cpp
+        PhysicsContact.h
         ${PHYSICS_RT_BEHAVIORS_SOURCES}
 )
 target_include_directories(physics_RT PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

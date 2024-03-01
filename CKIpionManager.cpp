@@ -8,261 +8,129 @@
 #include "CKParameterOut.h"
 #include "VxMatrix.h"
 
-#include "ivp_time.hxx"
+#include "ivp_performancecounter.hxx"
+#include "ivp_surbuild_pointsoup.hxx"
 #include "ivp_surman_polygon.hxx"
 #include "ivp_compact_surface.hxx"
 
-PhysicsCollisionListener::PhysicsCollisionListener(CKIpionManager *man)
-    : IVP_Listener_Collision(IVP_LISTENER_COLLISION_CALLBACK_POST_COLLISION |
-                             IVP_LISTENER_COLLISION_CALLBACK_FRICTION),
-      m_IpionManager(man) {}
-
-void PhysicsCollisionListener::event_friction_created(IVP_Event_Friction *friction)
+class PhysicsObjectListener : public IVP_Listener_Object
 {
-    if (!friction)
-        return;
+public:
+    explicit PhysicsObjectListener(CKIpionManager *man) : m_IpionManager(man) {}
 
-    IVP_Contact_Situation *situation = friction->contact_situation;
-
-    CK3dEntity *entity1 = (CK3dEntity *)situation->objects[0]->client_data;
-    if (!entity1)
-        return;
-
-    PhysicsObject *po1 = m_IpionManager->GetPhysicsObject(entity1);
-    if (!po1)
-        return;
-
-    if (po1->m_FrictionCount == 0)
-        po1->m_FrictionTime = friction->environment->get_current_time();
-    ++po1->m_FrictionCount;
-
-    CK3dEntity *entity2 = (CK3dEntity *)situation->objects[1]->client_data;
-    if (!entity2)
-        return;
-
-    PhysicsObject *po2 = m_IpionManager->GetPhysicsObject(entity2);
-    if (!po2)
-        return;
-
-    if (po2->m_FrictionCount == 0)
-        po2->m_FrictionTime = friction->environment->get_current_time();
-    ++po2->m_FrictionCount;
-}
-
-void PhysicsCollisionListener::event_friction_deleted(IVP_Event_Friction *friction)
-{
-    if (!friction)
-        return;
-
-    IVP_Contact_Situation *situation = friction->contact_situation;
-
-    CK3dEntity *entity1 = (CK3dEntity *)situation->objects[0]->client_data;
-    if (!entity1)
-        return;
-
-    PhysicsObject *po1 = m_IpionManager->GetPhysicsObject(entity1);
-    if (!po1)
-        return;
-
-    --po1->m_FrictionCount;
-
-    CK3dEntity *entity2 = (CK3dEntity *)situation->objects[1]->client_data;
-    if (!entity2)
-        return;
-
-    PhysicsObject *po2 = m_IpionManager->GetPhysicsObject(entity2);
-    if (!po2)
-        return;
-
-    --po2->m_FrictionCount;
-}
-
-PhysicsObjectListener::PhysicsObjectListener(CKIpionManager *man) : m_IpionManager(man) {}
-
-void PhysicsObjectListener::event_object_deleted(IVP_Event_Object *object)
-{
-    IVP_Real_Object *obj = object->real_object;
-
-    IVP_Core *core = obj->get_core();
-    if (!core->physical_unmoveable)
+    virtual void event_object_deleted(IVP_Event_Object *object)
     {
-        int i = m_IpionManager->m_MovableObjects.index_of(obj);
-        if (i != -1)
-            m_IpionManager->m_MovableObjects.remove_at(i);
-    }
+        IVP_Real_Object *obj = object->real_object;
 
-    CK3dEntity *entity = (CK3dEntity *)obj->client_data;
-    if (!entity)
-        return;
-
-    PhysicsObject *po = m_IpionManager->GetPhysicsObject(entity);
-    if (po && po->m_ContactData)
-    {
-        delete po->m_ContactData;
-        po->m_ContactData = NULL;
-    }
-}
-
-void PhysicsObjectListener::event_object_created(IVP_Event_Object *object) {}
-
-void PhysicsObjectListener::event_object_revived(IVP_Event_Object *object)
-{
-    IVP_Real_Object *obj = object->real_object;
-    m_IpionManager->m_MovableObjects.add(obj);
-}
-
-void PhysicsObjectListener::event_object_frozen(IVP_Event_Object *object)
-{
-    IVP_Real_Object *obj = object->real_object;
-    m_IpionManager->m_MovableObjects.remove(obj);
-}
-
-void PhysicsContactManager::Setup()
-{
-    CKAttributeManager *am = m_IpionManager->m_Context->GetAttributeManager();
-    m_ContactIDAttributeType = am->GetAttributeTypeByName("Continuous Contact ID");
-}
-
-void PhysicsContactManager::Process(IVP_Time time)
-{
-    const int len = m_Records.len();
-    for (int i = len - 1; i >= 0; --i)
-    {
-        PhysicsContactRecord *record = m_Records.element_at(i);
-        PhysicsObject *po = record->m_PhysicsObject;
-        PhysicsContactData *data = po->m_ContactData;
-
-        double delta = time - record->m_Time;
-        int id = record->m_ID;
-        PhysicsContactData::GroupOutput *output = data->m_GroupOutputs;
-
-        if (output[id].active)
+        IVP_Core *core = obj->get_core();
+        if (!core->physical_unmoveable)
         {
-            if (output[id].number == 0 && delta > data->m_TimeDelayEnd)
-            {
-                output[id].active = FALSE;
-                data->m_Behavior->ActivateOutput(2 * id + 1, TRUE);
-            }
-
-            m_Records.remove_at(i);
-            delete record;
+            int i = m_IpionManager->m_MovableObjects.index_of(obj);
+            if (i != -1)
+                m_IpionManager->m_MovableObjects.remove_at(i);
         }
-        else
-        {
-            if (output[id].number == 0 && data->m_TimeDelayStart < delta * 0.5)
-            {
-                m_Records.remove_at(i);
-                delete record;
-            }
-            else if (data->m_TimeDelayStart < delta)
-            {
-                output[id].active = TRUE;
-                data->m_Behavior->ActivateOutput(2 * id, TRUE);
-                m_Records.remove_at(i);
-                delete record;
-            }
-        }
-    }
-}
 
-int PhysicsContactManager::GetRecordCount() const
-{
-    return m_Records.len();
-}
+        CK3dEntity *entity = (CK3dEntity *)obj->client_data;
+        if (!entity)
+            return;
 
-void PhysicsContactManager::AddRecord(PhysicsObject *obj, int id, IVP_Time time)
-{
-    bool found = false;
-    const int len = m_Records.len();
-    for (int i = 0; i < len; ++i)
-    {
-        PhysicsContactRecord *record = m_Records.element_at(i);
-        if (record->m_PhysicsObject == obj && record->m_ID == id)
+        PhysicsObject *po = m_IpionManager->GetPhysicsObject(entity);
+        if (po && po->m_ContactData)
         {
-            found = true;
-            break;
+            delete po->m_ContactData;
+            po->m_ContactData = NULL;
         }
     }
 
-    if (!found)
+    virtual void event_object_created(IVP_Event_Object *object) {}
+
+    virtual void event_object_revived(IVP_Event_Object *object)
     {
-        PhysicsContactRecord *record = new PhysicsContactRecord;
-        record->m_PhysicsObject = obj;
-        record->m_ID = id;
-        record->m_Time = time;
-        m_Records.add(record);
-    }
-}
-
-void PhysicsContactManager::RemoveRecord(PhysicsObject *obj)
-{
-    if (!obj)
-        return;
-
-    const int len = m_Records.len();
-    for (int i = len - 1; i >= 0; --i)
-    {
-        PhysicsContactRecord *record = m_Records.element_at(i);
-        if (record->m_PhysicsObject == obj)
-        {
-            m_Records.remove_at(i);
-            delete record;
-        }
-    }
-}
-
-void PhysicsContactManager::RemoveRecord(PhysicsObject *obj, int id)
-{
-    if (!obj)
-        return;
-
-    const int len = m_Records.len();
-    for (int i = len - 1; i >= 0; --i)
-    {
-        PhysicsContactRecord *record = m_Records.element_at(i);
-        if (record->m_PhysicsObject == obj && record->m_ID == id)
-        {
-            m_Records.remove_at(i);
-            delete record;
-        }
-    }
-}
-
-PhysicsContactData::PhysicsContactData(float timeDelayStart, float timeDelayEnd,
-                                       PhysicsContactManager *man, CKBehavior *beh)
-    : m_TimeDelayStart(timeDelayStart), m_TimeDelayEnd(timeDelayEnd), m_Manager(man), m_Behavior(beh)
-{
-    m_GroupOutputs = new GroupOutput[m_Manager->m_NumberGroupOutput];
-    m_Listener = NULL;
-}
-
-PhysicsContactData::~PhysicsContactData()
-{
-    CKBehavior *beh = m_Behavior;
-
-    CK3dEntity *ent = (CK3dEntity *)beh->GetTarget();
-    if (!ent)
-        return;
-
-    PhysicsObject *po = m_Manager->m_IpionManager->GetPhysicsObject(ent);
-    m_Manager->RemoveRecord(po);
-
-    PhysicsContactData *data = NULL;
-    beh->SetLocalParameterValue(1, &data);
-
-    const int count = m_Manager->m_NumberGroupOutput;
-    for (int i = 0; i < count; ++i)
-    {
-        GroupOutput *output = &m_GroupOutputs[i];
-        if (output->active == TRUE)
-        {
-            output->active = FALSE;
-            beh->ActivateOutput(2 * i + 1, TRUE);
-        }
+        IVP_Real_Object *obj = object->real_object;
+        m_IpionManager->m_MovableObjects.add(obj);
     }
 
-    delete[] m_GroupOutputs;
-}
+    virtual void event_object_frozen(IVP_Event_Object *object)
+    {
+        IVP_Real_Object *obj = object->real_object;
+        m_IpionManager->m_MovableObjects.remove(obj);
+    }
+
+private:
+    CKIpionManager *m_IpionManager;
+};
+
+class PhysicsCollisionListener : public IVP_Listener_Collision
+{
+public:
+    explicit PhysicsCollisionListener(CKIpionManager *man)
+        : IVP_Listener_Collision(IVP_LISTENER_COLLISION_CALLBACK_POST_COLLISION |
+                                 IVP_LISTENER_COLLISION_CALLBACK_FRICTION),
+          m_IpionManager(man) {}
+
+    virtual void event_friction_created(IVP_Event_Friction *friction)
+    {
+        if (!friction)
+            return;
+
+        IVP_Contact_Situation *situation = friction->contact_situation;
+
+        CK3dEntity *entity1 = (CK3dEntity *)situation->objects[0]->client_data;
+        if (!entity1)
+            return;
+
+        PhysicsObject *po1 = m_IpionManager->GetPhysicsObject(entity1);
+        if (!po1)
+            return;
+
+        if (po1->m_FrictionCount == 0)
+            po1->m_FrictionTime = friction->environment->get_current_time();
+        ++po1->m_FrictionCount;
+
+        CK3dEntity *entity2 = (CK3dEntity *)situation->objects[1]->client_data;
+        if (!entity2)
+            return;
+
+        PhysicsObject *po2 = m_IpionManager->GetPhysicsObject(entity2);
+        if (!po2)
+            return;
+
+        if (po2->m_FrictionCount == 0)
+            po2->m_FrictionTime = friction->environment->get_current_time();
+        ++po2->m_FrictionCount;
+    }
+
+    virtual void event_friction_deleted(IVP_Event_Friction *friction)
+    {
+        if (!friction)
+            return;
+
+        IVP_Contact_Situation *situation = friction->contact_situation;
+
+        CK3dEntity *entity1 = (CK3dEntity *)situation->objects[0]->client_data;
+        if (!entity1)
+            return;
+
+        PhysicsObject *po1 = m_IpionManager->GetPhysicsObject(entity1);
+        if (!po1)
+            return;
+
+        --po1->m_FrictionCount;
+
+        CK3dEntity *entity2 = (CK3dEntity *)situation->objects[1]->client_data;
+        if (!entity2)
+            return;
+
+        PhysicsObject *po2 = m_IpionManager->GetPhysicsObject(entity2);
+        if (!po2)
+            return;
+
+        --po2->m_FrictionCount;
+    }
+
+private:
+    CKIpionManager *m_IpionManager;
+};
 
 CKIpionManager::CKIpionManager(CKContext *context)
     : CKBaseManager(context, TT_PHYSICS_MANAGER_GUID, "TT Physics Manager")
@@ -276,7 +144,6 @@ CKIpionManager::CKIpionManager(CKContext *context)
     m_PostSimulateCallbacks = NULL;
     m_CollisionListener = NULL;
     m_ObjectListener = NULL;
-    field_30 = 0;
     m_Environment = NULL;
     m_TimeManager = NULL;
     m_DeltaTime = 0.0f;
@@ -286,7 +153,7 @@ CKIpionManager::CKIpionManager(CKContext *context)
         ::OutputDebugStringA("Manager already exists");
 
     m_CollisionSurfaces = NULL;
-    m_CollisionDetectionID = -1;
+    m_CollDetectionIDAttribType = -1;
 }
 
 CKIpionManager::~CKIpionManager() {}
@@ -346,28 +213,7 @@ CKERROR CKIpionManager::PostClearAll()
 
 CKERROR CKIpionManager::PostProcess()
 {
-    float delta = m_TimeManager->GetLastDeltaTime();
-    SetDeltaTime(delta);
-
-    if (m_Environment)
-    {
-        if (m_PreSimulateCallbacks->m_HasCallbacks)
-            m_PreSimulateCallbacks->Process();
-
-        m_Environment->simulate_dtime(m_PhysicsDeltaTime);
-
-        m_ContactManager->Process(m_Environment->get_current_time());
-
-        if (m_PostSimulateCallbacks->m_HasCallbacks)
-            m_PostSimulateCallbacks->Process();
-
-        const int len = m_MovableObjects.len();
-        for (int i = len - 1; i >= 0; --i)
-        {
-            IVP_Real_Object *obj = m_MovableObjects.element_at(i);
-            UpdateObjectWorldMatrix(obj);
-        }
-    }
+    Simulate(m_TimeManager->GetLastDeltaTime());
 
     return CK_OK;
 }
@@ -587,7 +433,7 @@ void CKIpionManager::CreateEnvironment()
     m_Environment->add_listener_object_global(m_ObjectListener);
 
     m_ContactManager = new PhysicsContactManager(this);
-    m_ContactManager->Setup();
+    m_ContactManager->SetupContactID();
     SetupCollisionDetectID();
 }
 
@@ -644,12 +490,44 @@ void CKIpionManager::DestroyEnvironment()
     }
 }
 
-IVP_Time CKIpionManager::GetSimulationTime()
+void CKIpionManager::Simulate(float deltaTime)
+{
+    SetDeltaTime(deltaTime);
+
+    if (m_Environment)
+    {
+        if (m_PreSimulateCallbacks->m_HasCallbacks)
+            m_PreSimulateCallbacks->Process();
+
+        m_Environment->simulate_dtime(m_PhysicsDeltaTime);
+
+        m_ContactManager->Process(m_Environment->get_current_time());
+
+        if (m_PostSimulateCallbacks->m_HasCallbacks)
+            m_PostSimulateCallbacks->Process();
+
+        const int len = m_MovableObjects.len();
+        for (int i = len - 1; i >= 0; --i)
+        {
+            IVP_Real_Object *obj = m_MovableObjects.element_at(i);
+            UpdateObjectWorldMatrix(obj);
+        }
+    }
+}
+
+void CKIpionManager::ResetSimulationClock()
+{
+    m_Environment->reset_time();
+    m_Environment->get_time_manager()->env_set_current_time(m_Environment, IVP_Time(0));
+    m_Environment->reset_time();
+}
+
+IVP_Time CKIpionManager::GetSimulationTime() const
 {
     return m_Environment->get_current_time();
 }
 
-float CKIpionManager::GetSimulationTimeStep()
+float CKIpionManager::GetSimulationTimeStep() const
 {
     return m_Environment->get_delta_PSI_time();
 }
@@ -661,9 +539,8 @@ void CKIpionManager::SetSimulationTimeStep(float step)
 
 void CKIpionManager::SetDeltaTime(float delta)
 {
-    float time = (m_DeltaTime * 3.0f + delta) / 4;
-    m_DeltaTime = time;
-    m_PhysicsDeltaTime = time * m_PhysicsTimeFactor;
+    m_DeltaTime = (m_DeltaTime * 3.0f + delta) / 4;
+    m_PhysicsDeltaTime = m_DeltaTime * m_PhysicsTimeFactor;
 }
 
 void CKIpionManager::SetTimeFactor(float factor)
@@ -671,10 +548,16 @@ void CKIpionManager::SetTimeFactor(float factor)
     m_PhysicsTimeFactor = factor * 0.001f;
 }
 
+void CKIpionManager::GetGravity(VxVector &gravity) const
+{
+    const IVP_U_Point *g = m_Environment->get_gravity();
+    gravity.Set((float)g->k[0], (float)g->k[1], (float)g->k[2]);
+}
+
 void CKIpionManager::SetGravity(const VxVector &gravity)
 {
-    IVP_U_Point gravityPoint(gravity.x, gravity.y, gravity.z);
-    m_Environment->set_gravity(&gravityPoint);
+    IVP_U_Point g(gravity.x, gravity.y, gravity.z);
+    m_Environment->set_gravity(&g);
 }
 
 IVP_SurfaceManager *CKIpionManager::GetCollisionSurface(const char *name) const
@@ -705,7 +588,7 @@ void CKIpionManager::ClearCollisionSurfaces()
 
 void CKIpionManager::SetupCollisionDetectID()
 {
-    m_CollisionDetectionID = -1;
+    m_CollDetectionIDAttribType = -1;
 
     bool found = false;
     CKAttributeManager *am = m_Context->GetAttributeManager();
@@ -721,15 +604,26 @@ void CKIpionManager::SetupCollisionDetectID()
         {
             int type = obj->GetAttributeType(i);
             CKSTRING typeName = am->GetAttributeNameByType(type);
-            if (strcmp(typeName, "Coll Detection ID") == 0)
+            if (strcmp(typeName, "Coll Detection ID") == 0 && obj->GetAttributeParameter(type) != NULL)
             {
-                CKParameterOut *pa = obj->GetAttributeParameter(type);
-                pa->GetValue(&m_CollisionDetectionID);
+                m_CollDetectionIDAttribType = type;
                 found = true;
                 break;
             }
         }
     }
+}
+
+int CKIpionManager::GetCollisionDetectID(CK3dEntity *entity) const
+{
+    int collisionID = -1;
+    if (m_CollDetectionIDAttribType != -1 && entity)
+    {
+        CKParameterOut *pa = entity->GetAttributeParameter(m_CollDetectionIDAttribType);
+        if (pa)
+            pa->GetValue(&collisionID);
+    }
+    return collisionID;
 }
 
 void CKIpionManager::ResetProfiler()
