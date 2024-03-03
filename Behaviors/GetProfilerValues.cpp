@@ -71,8 +71,16 @@ int GetProfilerValues(const CKBehaviorContext &behcontext)
     }
     else
     {
-        int HasPhysicsCalls = man->GetPhysicsObjectCount();
-        beh->SetOutputParameterValue(0, &HasPhysicsCalls);
+        beh->SetOutputParameterValue(0, &man->m_HasPhysicsCalls);
+        beh->SetOutputParameterValue(1, &man->m_PhysicalizeCalls);
+        beh->SetOutputParameterValue(2, &man->m_DePhysicalizeCalls);
+
+        float hasPhysicsTime = (float)man->m_HasPhysicsTime.QuadPart;
+        beh->SetOutputParameterValue(3, &hasPhysicsTime);
+
+        float dePhysicalizeTime = (float)man->m_DePhysicalizeTime.QuadPart;
+        beh->SetOutputParameterValue(4, &dePhysicalizeTime);
+
         beh->ActivateInput(0, FALSE);
         beh->ActivateOutput(0, TRUE);
     }

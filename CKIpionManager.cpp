@@ -61,24 +61,26 @@ private:
 CKIpionManager::CKIpionManager(CKContext *context)
     : CKBaseManager(context, TT_PHYSICS_MANAGER_GUID, "TT Physics Manager")
 {
-    m_HasPhysicsCalls = 0;
-    m_PhysicalizeCalls = 0;
-    m_DePhysicalizeCalls = 0;
-
     m_CollisionFilterExclusivePair = NULL;
     m_PreSimulateCallbacks = NULL;
     m_PostSimulateCallbacks = NULL;
+    m_ContactManager = NULL;
     m_ObjectListener = NULL;
     m_Environment = NULL;
     m_TimeManager = NULL;
     m_DeltaTime = 0.0f;
     m_PhysicsDeltaTime = 0.0f;
+    m_PhysicsTimeFactor = 0.0f;
+    m_CollisionSurfaces = NULL;
+    m_CollDetectionIDAttribType = -1;
+    m_HasPhysicsCalls = 0;
+    m_PhysicalizeCalls = 0;
+    m_DePhysicalizeCalls = 0;
+    m_HasPhysicsTime = {};
+    m_DePhysicalizeTime = {};
 
     if (context->RegisterNewManager(this) == CKERR_MANAGERALREADYEXISTS)
         ::OutputDebugStringA("Manager already exists");
-
-    m_CollisionSurfaces = NULL;
-    m_CollDetectionIDAttribType = -1;
 }
 
 CKIpionManager::~CKIpionManager() {}
@@ -565,14 +567,11 @@ int CKIpionManager::GetCollisionDetectID(CK3dEntity *entity) const
 
 void CKIpionManager::ResetProfiler()
 {
-    QueryPerformanceFrequency(&m_ProfilerCounter);
-    memset(&m_HasPhysicsTime, 0, sizeof(LARGE_INTEGER));
-    memset(&m_DePhysicalizeTime, 0, sizeof(LARGE_INTEGER));
-    memset(&field_FC, 0, sizeof(LARGE_INTEGER));
-    memset(&field_104, 0, sizeof(LARGE_INTEGER));
     m_HasPhysicsCalls = 0;
     m_PhysicalizeCalls = 0;
     m_DePhysicalizeCalls = 0;
+    memset(&m_HasPhysicsTime, 0, sizeof(LARGE_INTEGER));
+    memset(&m_DePhysicalizeTime, 0, sizeof(LARGE_INTEGER));
 }
 
 void CKIpionManager::FillTemplateInfo(IVP_Template_Real_Object *templ, IVP_U_Point *position, IVP_U_Quat *orientation,
