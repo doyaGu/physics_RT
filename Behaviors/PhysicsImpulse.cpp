@@ -96,7 +96,7 @@ int PhysicsImpulse(const CKBehaviorContext &behcontext)
     if (isConstantForce)
         impulse *= man->m_PhysicsDeltaTime;
 
-    PhysicsObject *po = man->GetPhysicsObject(ent);
+    PhysicsObject *po = man->GetPhysicsObject(ent, FALSE);
     if (!po)
         return CKBR_OK;
 

@@ -95,7 +95,7 @@ int Physicalize(const CKBehaviorContext &behcontext)
 
     CKIpionManager *man = CKIpionManager::GetManager(context);
 
-    PhysicsObject *po = man->GetPhysicsObject(ent);
+    PhysicsObject *po = man->GetPhysicsObject(ent, FALSE);
 
     if (beh->IsInputActive(0)) // Physicalize
     {

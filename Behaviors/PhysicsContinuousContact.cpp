@@ -112,7 +112,7 @@ public:
         int index = contactID - 1;
 
         ent = (CK3dEntity *)m_RealObject->client_data;
-        PhysicsObject *po = m_IpionManager->GetPhysicsObject(ent);
+        PhysicsObject *po = m_IpionManager->GetPhysicsObject(ent, FALSE);
         if (!po)
             return;
 
@@ -171,7 +171,7 @@ public:
         int index = contactID - 1;
 
         ent = (CK3dEntity *)m_RealObject->client_data;
-        PhysicsObject *po = m_IpionManager->GetPhysicsObject(ent);
+        PhysicsObject *po = m_IpionManager->GetPhysicsObject(ent, FALSE);
         if (!po)
             return;
 
@@ -215,7 +215,7 @@ public:
         int numberGroupOutput;
         beh->GetLocalParameterValue(0, &numberGroupOutput);
 
-        PhysicsObject *po = m_IpionManager->GetPhysicsObject(ent);
+        PhysicsObject *po = m_IpionManager->GetPhysicsObject(ent, FALSE);
         if (!po)
             return 1;
 
@@ -269,7 +269,7 @@ int PhysicsContinuousContact(const CKBehaviorContext &behcontext)
             CK3dEntity *ent = (CK3dEntity *)beh->GetTarget();
             if (ent)
             {
-                PhysicsObject *po = man->GetPhysicsObject(ent);
+                PhysicsObject *po = man->GetPhysicsObject(ent, FALSE);
                 if (po)
                 {
                     delete data->m_Listener;

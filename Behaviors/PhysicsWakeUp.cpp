@@ -58,7 +58,7 @@ public:
         if (!ent)
             return 1;
 
-        PhysicsObject *po = m_IpionManager->GetPhysicsObject(ent);
+        PhysicsObject *po = m_IpionManager->GetPhysicsObject(ent, FALSE);
         if (!po)
             return 0;
 

@@ -158,7 +158,7 @@ PhysicsContactData::~PhysicsContactData()
     if (!ent)
         return;
 
-    PhysicsObject *po = m_Manager->m_IpionManager->GetPhysicsObject(ent);
+    PhysicsObject *po = m_Manager->m_IpionManager->GetPhysicsObject(ent, FALSE);
     m_Manager->RemoveRecord(po);
 
     PhysicsContactData *data = NULL;

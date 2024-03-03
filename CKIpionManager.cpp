@@ -22,24 +22,22 @@ public:
     {
         IVP_Real_Object *obj = object->real_object;
 
-        IVP_Core *core = obj->get_core();
-        if (!core->physical_unmoveable)
-        {
-            int i = m_IpionManager->m_MovableObjects.index_of(obj);
-            if (i != -1)
-                m_IpionManager->m_MovableObjects.remove_at(i);
-        }
+        int i = m_IpionManager->m_MovableObjects.index_of(obj);
+        if (i != -1)
+            m_IpionManager->m_MovableObjects.remove_at(i);
 
         CK3dEntity *entity = (CK3dEntity *)obj->client_data;
         if (!entity)
             return;
 
-        PhysicsObject *po = m_IpionManager->GetPhysicsObject(entity);
+        PhysicsObject *po = m_IpionManager->GetPhysicsObject(entity, FALSE);
         if (po && po->m_ContactData)
         {
             delete po->m_ContactData;
             po->m_ContactData = NULL;
         }
+
+        m_IpionManager->RemovePhysicsObject(entity);
     }
 
     virtual void event_object_created(IVP_Event_Object *object) {}
@@ -60,78 +58,6 @@ private:
     CKIpionManager *m_IpionManager;
 };
 
-class PhysicsCollisionListener : public IVP_Listener_Collision
-{
-public:
-    explicit PhysicsCollisionListener(CKIpionManager *man)
-        : IVP_Listener_Collision(IVP_LISTENER_COLLISION_CALLBACK_POST_COLLISION |
-                                 IVP_LISTENER_COLLISION_CALLBACK_FRICTION),
-          m_IpionManager(man) {}
-
-    virtual void event_friction_created(IVP_Event_Friction *friction)
-    {
-        if (!friction)
-            return;
-
-        IVP_Contact_Situation *situation = friction->contact_situation;
-
-        CK3dEntity *entity1 = (CK3dEntity *)situation->objects[0]->client_data;
-        if (!entity1)
-            return;
-
-        PhysicsObject *po1 = m_IpionManager->GetPhysicsObject(entity1);
-        if (!po1)
-            return;
-
-        if (po1->m_FrictionCount == 0)
-            po1->m_FrictionTime = friction->environment->get_current_time();
-        ++po1->m_FrictionCount;
-
-        CK3dEntity *entity2 = (CK3dEntity *)situation->objects[1]->client_data;
-        if (!entity2)
-            return;
-
-        PhysicsObject *po2 = m_IpionManager->GetPhysicsObject(entity2);
-        if (!po2)
-            return;
-
-        if (po2->m_FrictionCount == 0)
-            po2->m_FrictionTime = friction->environment->get_current_time();
-        ++po2->m_FrictionCount;
-    }
-
-    virtual void event_friction_deleted(IVP_Event_Friction *friction)
-    {
-        if (!friction)
-            return;
-
-        IVP_Contact_Situation *situation = friction->contact_situation;
-
-        CK3dEntity *entity1 = (CK3dEntity *)situation->objects[0]->client_data;
-        if (!entity1)
-            return;
-
-        PhysicsObject *po1 = m_IpionManager->GetPhysicsObject(entity1);
-        if (!po1)
-            return;
-
-        --po1->m_FrictionCount;
-
-        CK3dEntity *entity2 = (CK3dEntity *)situation->objects[1]->client_data;
-        if (!entity2)
-            return;
-
-        PhysicsObject *po2 = m_IpionManager->GetPhysicsObject(entity2);
-        if (!po2)
-            return;
-
-        --po2->m_FrictionCount;
-    }
-
-private:
-    CKIpionManager *m_IpionManager;
-};
-
 CKIpionManager::CKIpionManager(CKContext *context)
     : CKBaseManager(context, TT_PHYSICS_MANAGER_GUID, "TT Physics Manager")
 {
@@ -142,7 +68,6 @@ CKIpionManager::CKIpionManager(CKContext *context)
     m_CollisionFilterExclusivePair = NULL;
     m_PreSimulateCallbacks = NULL;
     m_PostSimulateCallbacks = NULL;
-    m_CollisionListener = NULL;
     m_ObjectListener = NULL;
     m_Environment = NULL;
     m_TimeManager = NULL;
@@ -231,6 +156,19 @@ void CKIpionManager::Reset()
 int CKIpionManager::GetPhysicsObjectCount() const
 {
     return m_PhysicsObjects.Size();
+}
+
+PhysicsObject *CKIpionManager::GetPhysicsObject(CK3dEntity *entity)
+{
+    if (!entity)
+        return NULL;
+
+    PhysicsObject *obj = NULL;
+    PhysicsObjectTable::Iterator it = m_PhysicsObjects.Find(entity->GetID());
+    if (it != m_PhysicsObjects.End())
+        obj = &*it;
+
+    return obj;
 }
 
 PhysicsObject *CKIpionManager::GetPhysicsObject(CK3dEntity *entity, CKBOOL logging)
@@ -426,9 +364,6 @@ void CKIpionManager::CreateEnvironment()
     m_PreSimulateCallbacks = new PhysicsCallbackContainer(this);
     m_PostSimulateCallbacks = new PhysicsCallbackContainer(this);
 
-    m_CollisionListener = new PhysicsCollisionListener(this);
-    m_Environment->add_listener_collision_global(m_CollisionListener);
-
     m_ObjectListener = new PhysicsObjectListener(this);
     m_Environment->add_listener_object_global(m_ObjectListener);
 
@@ -459,14 +394,6 @@ void CKIpionManager::DestroyEnvironment()
 
         delete m_ObjectListener;
         m_ObjectListener = NULL;
-    }
-
-    if (m_CollisionListener)
-    {
-        m_Environment->remove_listener_collision_global(m_CollisionListener);
-
-        delete m_CollisionListener;
-        m_CollisionListener = NULL;
     }
 
     for (int i = m_Entities.len() - 1; i >= 0; --i)
@@ -537,10 +464,20 @@ void CKIpionManager::SetSimulationTimeStep(float step)
     m_Environment->set_delta_PSI_time(step);
 }
 
+float CKIpionManager::GetDeltaTime() const
+{
+    return m_DeltaTime;
+}
+
 void CKIpionManager::SetDeltaTime(float delta)
 {
     m_DeltaTime = (m_DeltaTime * 3.0f + delta) / 4;
     m_PhysicsDeltaTime = m_DeltaTime * m_PhysicsTimeFactor;
+}
+
+float CKIpionManager::GetTimeFactor() const
+{
+    return m_PhysicsTimeFactor;
 }
 
 void CKIpionManager::SetTimeFactor(float factor)

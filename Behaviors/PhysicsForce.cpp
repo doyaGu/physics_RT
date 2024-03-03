@@ -143,7 +143,7 @@ public:
         float forceValue = 10.0f;
         beh->GetInputParameterValue(FORCE_VALUE, &forceValue);
 
-        PhysicsObject *po = m_IpionManager->GetPhysicsObject(ent);
+        PhysicsObject *po = m_IpionManager->GetPhysicsObject(ent, FALSE);
         if (!po)
             return 0;
 

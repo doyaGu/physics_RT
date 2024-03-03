@@ -31,35 +31,12 @@
 
 #include "PhysicsCallback.h"
 #include "PhysicsContact.h"
+#include "PhysicsObject.h"
 
 #define TERRATOOLS_GUID CKGUID(0x56495254, 0x4f4f4c53)
 #define TT_PHYSICS_MANAGER_GUID CKGUID(0x6BED328B, 0x141F5148)
 
 class PhysicsObjectListener;
-class PhysicsCollisionListener;
-
-class PhysicsObject
-{
-public:
-    PhysicsObject() : m_Behavior(NULL), m_RealObject(NULL),
-                      m_FrictionCount(0), m_FrictionTime(0),
-                      m_ContactData(NULL) {}
-
-    ~PhysicsObject()
-    {
-        if (m_ContactData)
-        {
-            delete m_ContactData;
-            m_ContactData = NULL;
-        }
-    }
-
-    CKBehavior *m_Behavior;
-    IVP_Real_Object *m_RealObject;
-    int m_FrictionCount;
-    IVP_Time m_FrictionTime;
-    PhysicsContactData *m_ContactData;
-};
 
 typedef XNHashTable<PhysicsObject, CK_ID> PhysicsObjectTable;
 
@@ -87,8 +64,10 @@ public:
 
     virtual void Reset();
 
+    virtual PhysicsObject *GetPhysicsObject(CK3dEntity *entity);
+
     int GetPhysicsObjectCount() const;
-    PhysicsObject *GetPhysicsObject(CK3dEntity *entity, CKBOOL logging = FALSE);
+    PhysicsObject *GetPhysicsObject(CK3dEntity *entity, CKBOOL logging);
     void RemovePhysicsObject(CK3dEntity *entity);
 
     int CreatePhysicsObjectOnParameters(CK3dEntity *target, int convexCount, CKMesh **convexes,
@@ -125,18 +104,21 @@ public:
 
     void Simulate(float deltaTime);
 
-    void ResetSimulationClock();
+    virtual void ResetSimulationClock();
 
-    IVP_Time GetSimulationTime() const;
+    virtual IVP_Time GetSimulationTime() const;
 
-    float GetSimulationTimeStep() const;
-    void SetSimulationTimeStep(float step);
+    virtual float GetSimulationTimeStep() const;
+    virtual void SetSimulationTimeStep(float step);
 
-    void SetDeltaTime(float delta);
-    void SetTimeFactor(float factor);
+    virtual float GetDeltaTime() const;
+    virtual void SetDeltaTime(float delta);
 
-    void GetGravity(VxVector &gravity) const;
-    void SetGravity(const VxVector &gravity);
+    virtual float GetTimeFactor() const;
+    virtual void SetTimeFactor(float factor);
+
+    virtual void GetGravity(VxVector &gravity) const;
+    virtual void SetGravity(const VxVector &gravity);
 
     PhysicsContactManager *GetContactManager() const { return m_ContactManager; }
 
@@ -174,7 +156,6 @@ public:
     PhysicsCallbackContainer *m_PreSimulateCallbacks;
     PhysicsCallbackContainer *m_PostSimulateCallbacks;
     PhysicsContactManager *m_ContactManager;
-    PhysicsCollisionListener *m_CollisionListener;
     PhysicsObjectListener *m_ObjectListener;
     int m_CollDetectionIDAttribType;
     IVP_Collision_Filter_Exclusive_Pair *m_CollisionFilterExclusivePair;

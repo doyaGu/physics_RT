@@ -121,7 +121,7 @@ public:
         if (useCollisionID && m_CollisionID != collisionID)
             return;
 
-        PhysicsObject *po = m_IpionManager->GetPhysicsObject(ent);
+        PhysicsObject *po = m_IpionManager->GetPhysicsObject(ent, FALSE);
         if (!po)
             return;
 
