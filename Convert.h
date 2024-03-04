@@ -54,8 +54,8 @@ inline void VxConvertQuaternion(const VxQuaternion &in, IVP_U_Quat &out)
 inline void VxConvertMatrix(const IVP_U_Matrix &in, VxMatrix &out)
 {
     // Transpose
-    for (int i = 3; i >= 0; --i)
-        for (int j = 3; j >= 0; --j)
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
             out[j][i] = (float)in.get_elem(i, j);
     out[0][3] = 0.0f;
     out[1][3] = 0.0f;
