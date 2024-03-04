@@ -276,6 +276,7 @@ void PhysicsObject::ApplyForceOffset(const VxVector &forceVector, const VxVector
     core->rot_speed_change.k[0] = IVP_Inline_Math::clamp(core->rot_speed_change.k[0], -IVP_MAX_ROT_SPEED, IVP_MAX_ROT_SPEED);
     core->rot_speed_change.k[1] = IVP_Inline_Math::clamp(core->rot_speed_change.k[1], -IVP_MAX_ROT_SPEED, IVP_MAX_ROT_SPEED);
     core->rot_speed_change.k[2] = IVP_Inline_Math::clamp(core->rot_speed_change.k[2], -IVP_MAX_ROT_SPEED, IVP_MAX_ROT_SPEED);
+
     Wake();
 }
 
@@ -345,6 +346,7 @@ void PhysicsObject::ApplyTorqueCenter(const VxVector &torqueImpulse)
     core->rot_speed_change.k[0] = IVP_Inline_Math::clamp(core->rot_speed_change.k[0], -IVP_MAX_ROT_SPEED, IVP_MAX_ROT_SPEED);
     core->rot_speed_change.k[1] = IVP_Inline_Math::clamp(core->rot_speed_change.k[1], -IVP_MAX_ROT_SPEED, IVP_MAX_ROT_SPEED);
     core->rot_speed_change.k[2] = IVP_Inline_Math::clamp(core->rot_speed_change.k[2], -IVP_MAX_ROT_SPEED, IVP_MAX_ROT_SPEED);
+
     Wake();
 }
 
@@ -361,7 +363,12 @@ void PhysicsObject::GetPosition(VxVector *worldPosition, VxVector *angles)
 
     if (angles)
     {
-        matrix.get_angles(&angles->x, &angles->y, &angles->z);
+        VxMatrix mat;
+        VxConvertMatrix(matrix, mat);
+
+        VxQuaternion quat;
+        quat.FromMatrix(mat);
+        quat.ToEulerAngles(&angles->x, &angles->y, &angles->z);
     }
 }
 
@@ -507,7 +514,6 @@ void PhysicsObject::AddVelocity(const VxVector *velocity, const VxVector *angula
     {
         IVP_U_Float_Point ivpAngularVelocity;
         VxConvertVector(*angularVelocity, ivpAngularVelocity);
-
         core->rot_speed_change.add(&ivpAngularVelocity);
     }
 }
