@@ -503,8 +503,9 @@ float CKIpionManager::GetDeltaTime() const
 
 void CKIpionManager::SetDeltaTime(float delta)
 {
-    m_DeltaTime = (m_DeltaTime * 3.0f + delta) / 4;
-    m_PhysicsDeltaTime = m_DeltaTime * m_PhysicsTimeFactor;
+    double smoothedDelta = (m_DeltaTime * 3.0 + delta) * 0.25;
+    m_DeltaTime = (float)smoothedDelta;
+    m_PhysicsDeltaTime = (float)(smoothedDelta * m_PhysicsTimeFactor);
 }
 
 float CKIpionManager::GetTimeFactor() const
