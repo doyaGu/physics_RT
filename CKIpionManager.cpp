@@ -476,7 +476,6 @@ void CKIpionManager::Simulate(float deltaTime)
 
 void CKIpionManager::ResetSimulationClock()
 {
-    m_Environment->reset_time();
     m_Environment->get_time_manager()->env_set_current_time(m_Environment, IVP_Time(0));
     m_Environment->reset_time();
 }
