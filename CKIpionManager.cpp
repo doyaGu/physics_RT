@@ -137,6 +137,10 @@ CKERROR CKIpionManager::OnCKReset()
 CKERROR CKIpionManager::PostClearAll()
 {
     DestroyEnvironment();
+
+    m_PhysicsTimeFactor = 0.001f;
+    m_PhysicsObjects.Clear();
+
     ClearCollisionSurfaces();
     ClearLiquidSurfaces();
 
