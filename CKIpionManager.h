@@ -50,6 +50,7 @@ public:
     virtual CKERROR OnCKEnd();
     virtual CKERROR OnCKPlay();
     virtual CKERROR OnCKReset();
+    virtual CKERROR OnCKPostReset();
     virtual CKERROR PostClearAll();
     virtual CKERROR PostProcess();
     virtual CKERROR SequenceToBeDeleted(CK_ID *iIDs, int iCount);
@@ -61,7 +62,8 @@ public:
                CKMANAGER_FUNC_OnCKEnd |
                CKMANAGER_FUNC_OnSequenceToBeDeleted |
                CKMANAGER_FUNC_OnCKPlay |
-               CKMANAGER_FUNC_OnCKReset;
+               CKMANAGER_FUNC_OnCKReset |
+               CKMANAGER_FUNC_OnCKPostReset;
     }
 
     virtual void Reset();
