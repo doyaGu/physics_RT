@@ -14,7 +14,7 @@ public:
     PhysicsCallback() : m_IpionManager(NULL), m_Type(0), m_Behavior(NULL) {}
     PhysicsCallback(CKIpionManager *pm, CKBehavior *beh, int type) : m_IpionManager(pm), m_Type(type), m_Behavior(beh) {}
     virtual int Execute() = 0;
-    virtual ~PhysicsCallback(){};
+    virtual ~PhysicsCallback() {}
 
     CKIpionManager *m_IpionManager;
     int m_Type;
